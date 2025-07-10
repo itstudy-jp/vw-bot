@@ -1,0 +1,54 @@
+2025-07-09 08:38:57,055 [INFO] Botの起動を開始します。
+2025-07-09 08:38:57,055 [INFO] Botログイン処理を開始します。
+2025-07-09 08:38:57,056 [INFO] logging in using static token
+2025-07-09 08:38:58,226 [INFO] Shard ID None has connected to Gateway (Session ID: 8b59d307684686eee3d1fe61b7a0e3c6).
+2025-07-09 08:39:00,559 [INFO] Botが準備完了しました。
+2025-07-09 08:39:00,559 [INFO] スケジュールを登録します。
+2025-07-09 08:39:00,560 [INFO] スケジュール登録が完了しました。
+2025-07-09 08:39:00,560 [INFO] スケジューラーを開始します。
+2025-07-09 08:39:11,722 [INFO] シャットダウン要求を受け取りました。Botをログアウトします。
+2025-07-09 08:39:11,722 [INFO] Botログアウトします。
+2025-07-09 08:39:11,723 [ERROR] Fatal error on SSL transport
+protocol: <asyncio.sslproto.SSLProtocol object at 0x000002624EB1A290>
+transport: <_ProactorSocketTransport fd=860 read=<_OverlappedFuture cancelled>>
+Traceback (most recent call last):
+  File "C:\Users\akymk\Desktop\BOT\Notification_BOT\main.py", line 71, in <module>
+    asyncio.run(main())
+  File "D:\Program Files\Python\Python310\lib\asyncio\runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "D:\Program Files\Python\Python310\lib\asyncio\base_events.py", line 633, in run_until_complete
+    self.run_forever()
+  File "D:\Program Files\Python\Python310\lib\asyncio\windows_events.py", line 321, in run_forever
+    super().run_forever()
+  File "D:\Program Files\Python\Python310\lib\asyncio\base_events.py", line 600, in run_forever
+    self._run_once()
+  File "D:\Program Files\Python\Python310\lib\asyncio\base_events.py", line 1860, in _run_once
+    event_list = self._selector.select(timeout)
+  File "D:\Program Files\Python\Python310\lib\asyncio\windows_events.py", line 439, in select
+    self._poll(timeout)
+  File "D:\Program Files\Python\Python310\lib\asyncio\windows_events.py", line 788, in _poll
+    status = _overlapped.GetQueuedCompletionStatus(self._iocp, ms)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python310\lib\asyncio\sslproto.py", line 690, in _process_write_backlog
+    self._transport.write(chunk)
+  File "D:\Program Files\Python\Python310\lib\asyncio\proactor_events.py", line 361, in write
+    self._loop_writing(data=bytes(data))
+  File "D:\Program Files\Python\Python310\lib\asyncio\proactor_events.py", line 397, in _loop_writing
+    self._write_fut = self._loop._proactor.send(self._sock, data)
+AttributeError: 'NoneType' object has no attribute 'send'
+2025-07-09 08:39:11,787 [INFO] Botを正常に停止しました。
+2025-07-09 08:39:11,794 [ERROR] Fatal error on SSL transport
+protocol: <asyncio.sslproto.SSLProtocol object at 0x000002624EB1BAC0>
+transport: <_ProactorSocketTransport fd=-1 read=<_OverlappedFuture cancelled>>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python310\lib\asyncio\sslproto.py", line 690, in _process_write_backlog
+    self._transport.write(chunk)
+  File "D:\Program Files\Python\Python310\lib\asyncio\proactor_events.py", line 361, in write
+    self._loop_writing(data=bytes(data))
+  File "D:\Program Files\Python\Python310\lib\asyncio\proactor_events.py", line 397, in _loop_writing
+    self._write_fut = self._loop._proactor.send(self._sock, data)
+AttributeError: 'NoneType' object has no attribute 'send'
