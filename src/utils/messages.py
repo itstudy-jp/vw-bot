@@ -22,11 +22,11 @@ MESSAGES = {
         },
     "five_minutes_left": {
         "msg": "作業終了まで残り5分です。",
-        "file_name": ""
+        "file_name": "5_minutes_left.wav"
     },
     "hourly_task": {
         "msg": "ここからの作業時間は1時間です。開始してください。",
-        "file_name": ""
+        "file_name": "1_hour_start.wav"
     },
     "clock_out": {
         "msg": "本日もお疲れ様でした。",
