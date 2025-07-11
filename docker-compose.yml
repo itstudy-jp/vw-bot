@@ -1,7 +1,5 @@
-version: '3.8'
-
 services:
-  kakomon-bot:
+  vw-bot:
     environment:
       TZ: Asia/Tokyo
       ENV_FILE: ${ENV_FILE:-.env.dev}

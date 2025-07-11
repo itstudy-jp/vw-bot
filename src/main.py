@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 # .envの記述を環境変数へ登録
 #load_dotenv()
 # .env 読み込み
+
 env_file = os.getenv("ENV_FILE", ".env.dev")
 print(f"loading env from: {env_file}")
 load_dotenv(dotenv_path=env_file)
@@ -42,6 +43,8 @@ if "prod" in env_file:
     ENV = "prod"
 else:
     ENV = "dev"
+    
+logger.debug(f"環境変数ファイル:{env_file} 環境:{ENV}")
 
 DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN")
 GUILD_ID: int = int(os.getenv("GUILD_ID"))
