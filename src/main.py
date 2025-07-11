@@ -33,7 +33,16 @@ logger = logging.getLogger(__name__)
 
 # ===== environment =====
 # .envの記述を環境変数へ登録
-load_dotenv()
+#load_dotenv()
+# .env 読み込み
+env_file = os.getenv("ENV_FILE", ".env.dev")
+print(f"loading env from: {env_file}")
+load_dotenv(dotenv_path=env_file)
+if "prod" in env_file:
+    ENV = "prod"
+else:
+    ENV = "dev"
+
 DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN")
 GUILD_ID: int = int(os.getenv("GUILD_ID"))
 # TODO チャンネル名から探索自動化検討
