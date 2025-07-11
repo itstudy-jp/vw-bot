@@ -4,29 +4,13 @@
 
 ## 概要
 
-* **起床通知**：9:00 に VC に入り「おはようございます。本日も頑張りましょう。」を通知
+* **始業通知**：9:00 に VC に入り「おはようございます。本日も頑張りましょう。」を通知
 * **毎時通知**：毎時00分に「X時になりました。開始してください。」を通知
-* **50分通知**：毎時50分に「お疲れ様です。50分になりました。」を通知（※11時台・17時台を除く）
+* **5分前通知**：休憩5分前に「作業終了まで残り5分です。」を通知
+* **50分通知**：毎時50分に「お疲れ様です。50分になりました。」を通知（※11時・終業前を除く）
 * **昼休み通知**：12:00 に「お疲れ様です。お昼になりました。」を通知
-* **退勤通知**：18:00 に「本日もお疲れ様でした。」を通知し、VCを退出
+* **終業通知**：終業時 に「本日もお疲れ様でした。」を通知し、VCを退出
 * 通知はテキストチャットと音声（.wav ファイル）で実施
-
-## ディレクトリ構成
-
-```
-vc-bot/
-├── audio/                   # 音声ファイル格納
-│   ├── start.wav
-│   ├── stop.wav
-│   ├── lunch.wav
-│   └── leaving.wav
-├── bot_tasks.py             # Bot 処理（VC参加・通知）
-├── main.py                  # エントリーポイント
-├── requirements.txt         # Python依存ライブラリ
-├── .env.example             # 環境変数テンプレート
-├── .gitignore               # Git管理対象除外
-└── README.md                # このファイル
-```
 
 ## セットアップ手順
 
@@ -43,7 +27,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. .envの作成
+### 3. .envの作成と定数の変更
 
 `.env.example` をコピーして `.env` を作成し、以下の情報を記入：
 
@@ -51,7 +35,6 @@ pip install -r requirements.txt
 DISCORD_TOKEN=Botのトークン
 GUILD_ID=サーバーID
 VC_CHANNEL_ID=通知用VCのチャンネルID
-TEXT_CHANNEL_ID=通知用テキストチャンネルID
 ```
 
 ### 4. ffmpegのインストール
@@ -72,7 +55,7 @@ sudo dnf install -y ffmpeg ffmpeg-devel
 
 ※ `epel-release` が見つからない場合は、EPEL RPM を [Fedora公式サイト](https://dl.fedoraproject.org/pub/epel/) からダウンロードしてインストールしてください。
 
-### 5. Botの実行（テスト時）
+### 5. Botの実行
 
 ```bash
 source .venv/bin/activate
