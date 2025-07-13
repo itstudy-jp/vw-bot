@@ -79,4 +79,7 @@ def register_jobs(bot, join_time, start_time, end_time):
     all_jobs = schedule.get_jobs()
     all_jobs.sort(key=lambda x: x.next_run)
     for job in all_jobs:
-        logger.info(f"次の実行時間: {job.next_run} 実行間隔: {job.interval} 実行関数: {job.job_func.__name__}")
+        if job.job_func.__name__ == 'vc_join_or_leave':
+            logger.info(f"インターバル: {job.interval}分 実行関数: {job.job_func.__name__}")
+            continue
+        logger.info(f"設定時刻: {job.next_run.time()} 実行関数: {job.job_func.__name__}")
