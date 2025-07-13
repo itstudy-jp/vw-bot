@@ -2,7 +2,7 @@
 """
 プログラムの起動及び初期化とDiscordイベントによるコルーチンを規定
 """
-from datetime import time as dt_time
+from datetime import datetime, timedelta, time as dt_time
 import logging
 import os
 import sys
@@ -15,6 +15,7 @@ import schedule
 
 from utils.actions import Bot
 from utils.schedules import register_jobs
+from utils.ntp_client import NTPRetrieve
 
 # ===== logging =====
 # TODO logging設定の外部化を検討
@@ -30,6 +31,26 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# ===== time adjustment =====
+ntp_retrieve = NTPRetrieve()
+ntp_time = ntp_retrieve.get_locale_time()
+local_time = datetime.now(ntp_retrieve.time_zone)
+logger.info(f"NTP: {ntp_time} LOCAL: {local_time}")
+time_diff = abs(ntp_time - local_time)
+if time_diff >= timedelta(minutes=1):
+    logger.warning(f"警告: {ntp_retrieve.ntp_host}で取得された時刻とローカル時刻の差が1分以上あります！差分: {time_diff}")
+    # ユーザーに続行を促す
+    while True:
+        user_input = input("このまま続行しますか？ (y/n): ").lower().strip()
+        if user_input == 'y':
+            logger.info("vw-botの起動処理を続行します。")
+            break
+        elif user_input == 'n':
+            logger.info("vw-botを終了します。")
+            sys.exit(0)
+        else:
+            logger.info("無効な入力です。「y」または「n」を入力してください。")
 
 # ===== environment =====
 # .envの記述を環境変数へ登録
@@ -90,11 +111,21 @@ async def discord_event_loop():
     """
     logger.debug("heartbeat")
 
+    # ===== time keep =====
+    # 現在のntpとlocalの時刻と差分を表示
+    nt = ntp_retrieve.get_locale_time()
+    lt = datetime.now(ntp_retrieve.time_zone)
+    logger.debug(f"NTP: {nt} LOCAL: {lt}")
+    t_diff = abs(nt - lt)
+    if t_diff >= timedelta(minutes=1):
+        logger.warning(f"警告: {ntp_retrieve.ntp_host}とローカル時刻の差が1分以上あります！差分: {t_diff}")
+
     # ===== schedule =====
-    logger.debug("登録スケジュール一覧")
+    logger.debug("直近5件の登録スケジュール")
     all_jobs = schedule.get_jobs()
     all_jobs.sort(key=lambda x: x.next_run)
-    for job in all_jobs:
+    last_five_jobs = all_jobs[-5:]
+    for job in last_five_jobs:
         logger.debug(f"次の実行時間: {job.next_run} 実行間隔: {job.interval} 実行関数: {job.job_func.__name__}")
     # スケジューラ内容の実行 *ループ時間未満のタスクは実行出来ないので注意
     schedule.run_pending()
