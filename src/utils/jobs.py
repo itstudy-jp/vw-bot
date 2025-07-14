@@ -3,8 +3,10 @@
 スケジュールによるbot動作を規定
 """
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 import logging
+
+from pytz import timezone
 
 from .messages import MESSAGES
 
@@ -14,30 +16,39 @@ logger.addHandler(logging.NullHandler())
 # ===== locale =====
 # TODO 要検証
 # 異なるタイムゾーンで動作しているOSでも日本時間で動作
-JST = timezone(timedelta(hours=+9), 'JST')
+JST = timezone('Asia/Tokyo')
 logger.info("TimeZoneをJSTに設定しました。")
-
-# 日本時間での日付及び時刻オブジェクト
-DT = datetime.now(JST)
 
 # TODO jobのExceptionをキャッチ
 # https://schedule.readthedocs.io/en/stable/exception-handling.html
+def get_now_time():
+    """
+    # 日本時間での日付及び時刻オブジェクト
+    """
+    return datetime.now(JST)
+
 
 def get_weekdays():
     """
-   月曜日から金曜日であればflagをTrueで返す
+   月曜日から金曜日であればTrueを返す
     """
-    flag = False
-    # 月-金は0-5
-    if DT.weekday() < 5:
-        flag = True
-    return flag
+    dt = get_now_time()
+    # 月-金は0-4
+    if dt.weekday() < 5:
+        return True
+    else:
+        return False
 
 def vc_join_or_leave(bot, j_time, e_time):
+    """
+    規定時刻内であればVCに参加し、規定時刻外であればVCから切断をループ
+    """
     if get_weekdays():
 
-        # 日本時間での現在時刻
-        now_time = DT.time()
+        # example: 2025-07-13 19:25:12.880298+09:00
+        dt = get_now_time()
+        # 日本時間での現在時刻 example: 19:25:12.880298
+        now_time = dt.time()
         # 規定時刻内であればVCに参加する
         if j_time <= now_time < e_time:
             asyncio.run_coroutine_threadsafe(bot.join_vc(), bot.client.loop)
