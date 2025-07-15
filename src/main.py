@@ -2,11 +2,10 @@
 """
 プログラムの起動及び初期化とDiscordイベントによるコルーチンを規定
 """
-from datetime import time as dt_time
+from datetime import datetime, timedelta, time as dt_time
 import logging
 import os
 import sys
-import time
 
 import discord
 from discord.ext import tasks
@@ -15,6 +14,8 @@ import schedule
 
 from utils.actions import Bot
 from utils.schedules import register_jobs
+from utils.ntp_client import NTPRetrieve
+from utils.jobs import JST
 
 # ===== logging =====
 # TODO logging設定の外部化を検討
@@ -31,11 +32,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ===== time adjustment =====
+ntp_retrieve = NTPRetrieve()
+ntp_time = ntp_retrieve.get_locale_time()
+local_time = datetime.now(ntp_retrieve.time_zone)
+logger.info(f"NTP: {ntp_time} LOCAL: {local_time}")
+time_diff = abs(ntp_time - local_time)
+if time_diff >= timedelta(minutes=1):
+    logger.warning(f"警告: {ntp_retrieve.ntp_host}で取得された時刻とローカル時刻の差が1分以上あります！差分: {time_diff}")
+    # ユーザーに続行を促す
+    while True:
+        user_input = input("このまま続行しますか？ (y/n): ").lower().strip()
+        if user_input == 'y':
+            logger.info("vw-botの起動処理を続行します。")
+            break
+        elif user_input == 'n':
+            logger.info("vw-botを終了します。")
+            sys.exit(0)
+        else:
+            logger.info("無効な入力です。「y」または「n」を入力してください。")
+
 # ===== environment =====
 # .envの記述を環境変数へ登録
-#load_dotenv()
-# .env 読み込み
-
+# load_dotenv()
 env_file = os.getenv("ENV_FILE", ".env.dev")
 print(f"loading env from: {env_file}")
 load_dotenv(dotenv_path=env_file)
@@ -43,7 +62,7 @@ if "prod" in env_file:
     ENV = "prod"
 else:
     ENV = "dev"
-    
+
 logger.debug(f"環境変数ファイル:{env_file} 環境:{ENV}")
 
 DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN")
@@ -68,17 +87,6 @@ intents = discord.Intents.default()
 
 # ===== client =====
 client = discord.Client(intents=intents)
-logger.info("discord.pyのclientを初期化しています。")
-count = 0
-while client.is_ready():
-    count += 1
-    time.sleep(3)
-    if count > 10:
-        logger.critical("長時間接続が確立出来ませんでした。")
-        logger.critical("異常終了")
-        sys.exit(1)
-logger.info("discord.pyのclient接続が完了しました。")
-
 
 @client.event
 async def on_ready():
@@ -102,12 +110,49 @@ async def discord_event_loop():
     """
     logger.debug("heartbeat")
 
+    # ===== time keep =====
+    # 現在のntpとlocalの時刻と差分を表示
+    nt = ntp_retrieve.get_locale_time()
+    lt = datetime.now(ntp_retrieve.time_zone)
+    logger.debug(f"NTP: {nt} LOCAL: {lt}")
+    t_diff = abs(nt - lt)
+    if t_diff >= timedelta(minutes=1):
+        logger.warning(f"警告: {ntp_retrieve.ntp_host}とローカル時刻の差が1分以上あります！差分: {t_diff}")
+
     # ===== schedule =====
-    logger.debug("登録スケジュール一覧")
+    logger.debug("直近5件の実行スケジュール")
     all_jobs = schedule.get_jobs()
-    all_jobs.sort(key=lambda x: x.next_run)
+    # 表示する実行jobを格納
+    next_run_jobs = []
+
     for job in all_jobs:
-        logger.debug(f"次の実行時間: {job.next_run} 実行間隔: {job.interval} 実行関数: {job.job_func.__name__}")
+        # vc_join_or_leaveは登録を無視する
+        if job.job_func.__name__ == 'vc_join_or_leave':
+            continue
+
+        # 時刻指定されたjobで次回実行が予定されている場合はdailyであると仮定(良い実装ではない)
+        if job.at_time and job.next_run:
+            # 念のため日本時刻に変更
+            next_run = JST.localize(job.next_run)
+            # 実行の曜日を取得
+            weekday = next_run.weekday()
+
+            adjust_run = next_run
+            # 土曜と日曜であれば無理矢理月曜日まで日付を足して調整(良い実装ではない)
+            if weekday == 5:
+                adjust_run += timedelta(days=2)
+            elif weekday == 6:
+                adjust_run += timedelta(days=1)
+
+            next_run_jobs.append((adjust_run, job.job_func.__name__))
+
+    # 実行時刻でソート
+    next_run_jobs.sort(key=lambda x: x[0])
+
+    # 直近5件を表示
+    for next_run_time, job_name in next_run_jobs[:5]:
+        logger.debug(f"次の実行時間: {next_run_time.strftime('%Y-%m-%d %H:%M:%S %Z%z')} 実行関数: {job_name}")
+
     # スケジューラ内容の実行 *ループ時間未満のタスクは実行出来ないので注意
     schedule.run_pending()
 
