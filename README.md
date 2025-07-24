@@ -51,7 +51,9 @@ VC_CHANNEL_ID=通知用VCのチャンネルID
 ```bash
 make run-dev    # イメージをdevでビルドしてコンテナ起動
 make run-prod   # イメージをprodでビルドしてコンテナ起動
-make down       # Bot を停止してコンテナ・イメージ削除
+make down       # BOTを停止してコンテナ・イメージ削除
+make stop       # BOTコンテナを停止
+make start      # BOTコンテナを開始
 ```
 
 ### 4. ログの確認
