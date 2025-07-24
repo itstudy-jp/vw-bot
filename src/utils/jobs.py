@@ -68,8 +68,8 @@ def notify_clock_in(bot):
         param = MESSAGES["clock_in"]
         msg = param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
         asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
+        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
 
 def notify_work_start(bot, t):
     """
@@ -79,8 +79,8 @@ def notify_work_start(bot, t):
         param = MESSAGES["work_start"]
         msg = str(t.hour) + param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
         asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
+        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
 
 def notify_break_start(bot, t):
     """
@@ -95,8 +95,8 @@ def notify_break_start(bot, t):
             param = MESSAGES["break_start"]["other"]
             msg = f'{t.hour}時{t.minute}分{param["msg"]}'
             file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
         asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
+        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
 
 def notify_five_minutes_left(bot):
     """
@@ -106,8 +106,8 @@ def notify_five_minutes_left(bot):
         param = MESSAGES["five_minutes_left"]
         msg = param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
         asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
+        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
 
 def notify_hourly_task(bot):
     """
@@ -117,8 +117,8 @@ def notify_hourly_task(bot):
         param = MESSAGES["hourly_task"]
         msg = param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
         asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
+        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
 
 def notify_clock_out(bot):
     """
@@ -128,6 +128,7 @@ def notify_clock_out(bot):
         param = MESSAGES["clock_out"]
         msg = param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
         asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
+        fut = asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
+        result = fut.result()
         asyncio.run_coroutine_threadsafe(bot.leave_vc(), bot.client.loop)
