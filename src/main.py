@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, time as dt_time
 import logging
 import os
 import sys
+import asyncio
 
 import discord
 from discord.ext import tasks
@@ -54,7 +55,17 @@ if time_diff >= timedelta(minutes=1):
 
 # ===== environment =====
 # .envの記述を環境変数へ登録
-load_dotenv()
+# load_dotenv()
+env_file = os.getenv("ENV_FILE", ".env.dev")
+print(f"loading env from: {env_file}")
+load_dotenv(dotenv_path=env_file)
+if "prod" in env_file:
+    ENV = "prod"
+else:
+    ENV = "dev"
+
+logger.debug(f"環境変数ファイル:{env_file} 環境:{ENV}")
+
 DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN")
 GUILD_ID: int = int(os.getenv("GUILD_ID"))
 # TODO チャンネル名から探索自動化検討
@@ -91,60 +102,68 @@ async def on_ready():
     register_jobs(bot, JOIN_TIME, START_TIME, END_TIME)
 
     # discord.pyのループ
-    discord_event_loop.start()
+    asyncio.create_task(discord_event_loop())
 
-@tasks.loop(seconds=60)
 async def discord_event_loop():
     """
-    Discord.pyのスケジューラ
+    Discord.pyのスケジューラ（毎分00秒で実行）
     """
-    logger.debug("heartbeat")
+    await client.wait_until_ready()
 
-    # ===== time keep =====
-    # 現在のntpとlocalの時刻と差分を表示
-    nt = ntp_retrieve.get_locale_time()
-    lt = datetime.now(ntp_retrieve.time_zone)
-    logger.debug(f"NTP: {nt} LOCAL: {lt}")
-    t_diff = abs(nt - lt)
-    if t_diff >= timedelta(minutes=1):
-        logger.warning(f"警告: {ntp_retrieve.ntp_host}とローカル時刻の差が1分以上あります！差分: {t_diff}")
+    while not client.is_closed():
+        # 次の分の00秒までsleepして00秒で処理を開始
+        now = datetime.now()
+        next_minute = (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
+        sleep_seconds = (next_minute - now).total_seconds()
+        await asyncio.sleep(sleep_seconds)
 
-    # ===== schedule =====
-    logger.debug("直近5件の実行スケジュール")
-    all_jobs = schedule.get_jobs()
-    # 表示する実行jobを格納
-    next_run_jobs = []
+        logger.debug("heartbeat")
 
-    for job in all_jobs:
-        # vc_join_or_leaveは登録を無視する
-        if job.job_func.__name__ == 'vc_join_or_leave':
-            continue
+        # ===== time keep =====
+        # 現在のntpとlocalの時刻と差分を表示
+        nt = ntp_retrieve.get_locale_time()
+        lt = datetime.now(ntp_retrieve.time_zone)
+        logger.debug(f"NTP: {nt} LOCAL: {lt}")
+        t_diff = abs(nt - lt)
+        if t_diff >= timedelta(minutes=1):
+            logger.warning(f"警告: {ntp_retrieve.ntp_host}とローカル時刻の差が1分以上あります！差分: {t_diff}")
 
-        # 時刻指定されたjobで次回実行が予定されている場合はdailyであると仮定(良い実装ではない)
-        if job.at_time and job.next_run:
-            # 念のため日本時刻に変更
-            next_run = JST.localize(job.next_run)
-            # 実行の曜日を取得
-            weekday = next_run.weekday()
+        # ===== schedule =====
+        logger.debug("直近5件の実行スケジュール")
+        all_jobs = schedule.get_jobs()
+        # 表示する実行jobを格納
+        next_run_jobs = []
 
-            adjust_run = next_run
-            # 土曜と日曜であれば無理矢理月曜日まで日付を足して調整(良い実装ではない)
-            if weekday == 5:
-                adjust_run += timedelta(days=2)
-            elif weekday == 6:
-                adjust_run += timedelta(days=1)
+        for job in all_jobs:
+            # vc_join_or_leaveは登録を無視する
+            if job.job_func.__name__ == 'vc_join_or_leave':
+                continue
 
-            next_run_jobs.append((adjust_run, job.job_func.__name__))
+            # 時刻指定されたjobで次回実行が予定されている場合はdailyであると仮定(良い実装ではない)
+            if job.at_time and job.next_run:
+                # 念のため日本時刻に変更
+                next_run = JST.localize(job.next_run)
+                # 実行の曜日を取得
+                weekday = next_run.weekday()
 
-    # 実行時刻でソート
-    next_run_jobs.sort(key=lambda x: x[0])
+                adjust_run = next_run
+                # 土曜と日曜であれば無理矢理月曜日まで日付を足して調整(良い実装ではない)
+                if weekday == 5:
+                    adjust_run += timedelta(days=2)
+                elif weekday == 6:
+                    adjust_run += timedelta(days=1)
 
-    # 直近5件を表示
-    for next_run_time, job_name in next_run_jobs[:5]:
-        logger.debug(f"次の実行時間: {next_run_time.strftime('%Y-%m-%d %H:%M:%S %Z%z')} 実行関数: {job_name}")
+                next_run_jobs.append((adjust_run, job.job_func.__name__))
 
-    # スケジューラ内容の実行 *ループ時間未満のタスクは実行出来ないので注意
-    schedule.run_pending()
+        # 実行時刻でソート
+        next_run_jobs.sort(key=lambda x: x[0])
+
+        # 直近5件を表示
+        for next_run_time, job_name in next_run_jobs[:5]:
+            logger.debug(f"次の実行時間: {next_run_time.strftime('%Y-%m-%d %H:%M:%S %Z%z')} 実行関数: {job_name}")
+
+        # スケジューラ内容の実行 *ループ時間未満のタスクは実行出来ないので注意
+        schedule.run_pending()
 
     # ===== add execution =====
 

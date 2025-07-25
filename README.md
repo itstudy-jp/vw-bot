@@ -12,24 +12,33 @@
 * **終業通知**：終業時 に「本日もお疲れ様でした。」を通知し、VCを退出
 * 通知はテキストチャットと音声（.wav ファイル）で実施
 
-## セットアップ手順
+## セットアップ手順（Makefile + Docker / Podman）
 
-### 1. 仮想環境の作成（共通）
+### 1. 環境準備
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 2. 必要ライブラリのインストール
+#### ◾ Ubuntu（Dockerを使用）
 
 ```bash
-pip install -r requirements.txt
+sudo apt update
+sudo apt install -y docker.io make
+sudo systemctl enable --now docker
+
+# （任意）Dockerをrootlessで使う
+sudo usermod -aG docker $USER
+newgrp docker
 ```
 
-### 3. .envの作成と定数の変更
+#### ◾ RHEL / Rocky Linux（Podman互換モードでDockerコマンドを使用）
 
-`.env.example` をコピーして `.env` を作成し、以下の情報を記入：
+```bash
+sudo dnf install -y podman podman-docker make
+```
+
+> `podman-docker` をインストールすることで、`docker` コマンドが Podman にラップされ、Makefile をそのまま使用できます。
+
+### 2. `.env` ファイルの作成
+
+`.env.example` をコピーして `.env.dev`（検証環境用）または `.env.prod`（本番用）を作成し、以下のように記入してください：
 
 ```
 DISCORD_TOKEN=Botのトークン
@@ -37,36 +46,29 @@ GUILD_ID=サーバーID
 VC_CHANNEL_ID=通知用VCのチャンネルID
 ```
 
-### 4. ffmpegのインストール
-
-#### ◾ Ubuntu 24.04
+### 3. Bot イメージのビルドと実行
 
 ```bash
-sudo apt update
-sudo apt install -y ffmpeg
+make run-dev    # イメージをdevでビルドしてコンテナ起動
+make run-prod   # イメージをprodでビルドしてコンテナ起動
+make down       # BOTを停止してコンテナ・イメージ削除
+make stop       # BOTコンテナを停止
+make start      # BOTコンテナを開始
 ```
 
-#### ◾ RHEL / Rocky Linux 9
+### 4. ログの確認
 
 ```bash
-sudo dnf install -y epel-release
-sudo dnf install -y ffmpeg ffmpeg-devel
+docker logs -f vc-bot
 ```
 
-※ `epel-release` が見つからない場合は、EPEL RPM を [Fedora公式サイト](https://dl.fedoraproject.org/pub/epel/) からダウンロードしてインストールしてください。
-
-### 5. Botの実行
-
-```bash
-source .venv/bin/activate
-python main.py
-```
+> ※RHELでは `docker` は Podman によってラップされており、同様に動作します。
 
 ## 注意事項
 
-* 音声通知には `ffmpeg` と `pynacl` ライブラリが必要です。
-* Botには VC参加・発言・メッセージ投稿のパーミッションが必要です。
-* 時刻判定はシステムクロックに依存するため、タイムゾーンが正しいか確認してください（例：JST）。
+* 音声通知には `ffmpeg` と `pynacl` ライブラリが必要です（Dockerfile 内で対応済み）
+* Discord Bot には VC参加・発言・メッセージ投稿のパーミッションが必要です
+* 時刻判定はシステムクロックに依存するため、タイムゾーンを確認してください（例：JST）
 
 ## 今後の展望
 

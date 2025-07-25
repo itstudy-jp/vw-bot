@@ -1,0 +1,10 @@
+services:
+  vw-bot:
+    environment:
+      TZ: Asia/Tokyo
+      ENV_FILE: ${ENV_FILE:-.env.dev}
+    env_file:
+      - ${ENV_FILE:-.env.dev}
+    build: .
+    container_name: vw-bot
+    restart: unless-stopped
