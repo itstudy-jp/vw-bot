@@ -12,7 +12,32 @@
 * **終業通知**：終業時 に「本日もお疲れ様でした。」を通知し、VCを退出
 * 通知はテキストチャットと音声（.wav ファイル）で実施
 
-## セットアップ手順（Makefile + Docker / Podman）
+## セットアップ手順 Pythonアプリケーションとして実行
+### 環境手順
+
+#### 実行環境の準備
+- Pythonを実行出来る必要があります。
+- [venv](https://docs.python.org/ja/3/library/venv.html)
+- ライブラリのインストールが必要です。
+- `requirements.txt` からパッケージ管理ソフトウェアによって構築してください。
+
+#### 環境変数の設定
+
+`.env.example` をコピーして `.env` を作成  
+コマンド簡便化のため開発|本番はファイル内容の書き換えで対応してください
+
+以下のように記入してください：
+
+```
+DISCORD_TOKEN=Botのトークン
+GUILD_ID=サーバーID
+VC_CHANNEL_ID=通知用VCのチャンネルID
+```
+
+#### 実行方法
+- `./src/main.py`を実行するだけです
+
+## セットアップ手順 Docker（Makefile + Docker / Podman）
 
 ### 1. 環境準備
 
@@ -38,7 +63,10 @@ sudo dnf install -y podman podman-docker make
 
 ### 2. `.env` ファイルの作成
 
-`.env.example` をコピーして `.env.dev`（検証環境用）または `.env.prod`（本番用）を作成し、以下のように記入してください：
+`.env.example` をコピーして `.env.dev`（検証環境用）または `.env.prod`（本番用）を作成
+
+
+以下のように記入してください：
 
 ```
 DISCORD_TOKEN=Botのトークン

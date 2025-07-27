@@ -6,17 +6,15 @@ from datetime import datetime, timedelta, time as dt_time
 import logging
 import os
 import sys
-import asyncio
 
 import discord
 from discord.ext import tasks
 from dotenv import load_dotenv
-import schedule
 
 from utils.actions import Bot
-from utils.schedules import register_jobs
+from utils.async_scheduler import ScheduleTaskError
+from utils.schedule_trigger import register_jobs
 from utils.ntp_client import NTPRetrieve
-from utils.jobs import JST
 
 # ===== logging =====
 # TODO logging設定の外部化を検討
@@ -33,6 +31,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# TODO async_scheduleを完全にNTPによって動作させられるまで暫定で残す
 # ===== time adjustment =====
 ntp_retrieve = NTPRetrieve()
 ntp_time = ntp_retrieve.get_locale_time()
@@ -44,10 +43,10 @@ if time_diff >= timedelta(minutes=1):
     # ユーザーに続行を促す
     while True:
         user_input = input("このまま続行しますか？ (y/n): ").lower().strip()
-        if user_input == 'y':
+        if user_input == "y":
             logger.info("vw-botの起動処理を続行します。")
             break
-        elif user_input == 'n':
+        elif user_input == "n":
             logger.info("vw-botを終了します。")
             sys.exit(0)
         else:
@@ -55,16 +54,20 @@ if time_diff >= timedelta(minutes=1):
 
 # ===== environment =====
 # .envの記述を環境変数へ登録
-# load_dotenv()
-env_file = os.getenv("ENV_FILE", ".env.dev")
-print(f"loading env from: {env_file}")
-load_dotenv(dotenv_path=env_file)
-if "prod" in env_file:
-    ENV = "prod"
-else:
-    ENV = "dev"
+load_dotenv()
 
-logger.debug(f"環境変数ファイル:{env_file} 環境:{ENV}")
+# containerで設定した環境変数は自動的に読み込まれるのでloadは不要です
+# 意図が不明だったのでコードはコメントアウトで残しておきます
+# 特別な理由により必要とされている場合は単体実行との共通化をどうするか考えるべきです
+# env_file = os.getenv("ENV_FILE", ".env.dev")
+# logger.info(f"loading env from: {env_file}")
+# load_dotenv(dotenv_path=env_file)
+# if "prod" in env_file:
+#     ENV = "prod"
+# else:
+#     ENV = "dev"
+#
+# logger.debug(f"環境変数ファイル:{env_file} 環境:{ENV}")
 
 DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN")
 GUILD_ID: int = int(os.getenv("GUILD_ID"))
@@ -99,71 +102,42 @@ async def on_ready():
     bot = Bot(client, GUILD_ID, VC_CHANNEL_ID)
 
     # スケジュールを登録
-    register_jobs(bot, JOIN_TIME, START_TIME, END_TIME)
+    tasks_object = register_jobs(bot, JOIN_TIME, START_TIME, END_TIME)
 
+    for task_name, task_instance in tasks_object.items():
+        try:
+            task_instance.start()
+            logger.debug(f"'{task_name}' を開始しました。")
+        except ScheduleTaskError as e:
+            logger.error(f"'{task_name}' の開始に失敗しました。 {e}")
+        except Exception:
+            logger.exception(f"'{task_name}' の開始中に不明なエラーが発生しました。")
+
+    logger.info("全てのタスクの登録と開始を完了しました。Discordのイベントループを開始します。")
     # discord.pyのループ
-    asyncio.create_task(discord_event_loop())
+    discord_event_loop.start()
 
+@tasks.loop(seconds=60)
 async def discord_event_loop():
     """
-    Discord.pyのスケジューラ（毎分00秒で実行）
+    Discord.pyのスケジューラ
     """
-    await client.wait_until_ready()
+    logger.debug("heartbeat")
 
-    while not client.is_closed():
-        # 次の分の00秒までsleepして00秒で処理を開始
-        now = datetime.now()
-        next_minute = (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
-        sleep_seconds = (next_minute - now).total_seconds()
-        await asyncio.sleep(sleep_seconds)
+    # ===== time keep =====
+    # TODO 削除検討
+    # async_scheduleを完全にNTPによって動作させられれば不要になる
+    # 現在のntpとlocalの時刻と差分を表示
+    nt = ntp_retrieve.get_locale_time()
+    lt = datetime.now(ntp_retrieve.time_zone)
+    logger.debug(f"NTP: {nt} LOCAL: {lt}")
+    t_diff = abs(nt - lt)
+    if t_diff >= timedelta(minutes=1):
+        logger.warning(f"警告: {ntp_retrieve.ntp_host}とローカル時刻の差が1分以上あります！差分: {t_diff}")
 
-        logger.debug("heartbeat")
-
-        # ===== time keep =====
-        # 現在のntpとlocalの時刻と差分を表示
-        nt = ntp_retrieve.get_locale_time()
-        lt = datetime.now(ntp_retrieve.time_zone)
-        logger.debug(f"NTP: {nt} LOCAL: {lt}")
-        t_diff = abs(nt - lt)
-        if t_diff >= timedelta(minutes=1):
-            logger.warning(f"警告: {ntp_retrieve.ntp_host}とローカル時刻の差が1分以上あります！差分: {t_diff}")
-
-        # ===== schedule =====
-        logger.debug("直近5件の実行スケジュール")
-        all_jobs = schedule.get_jobs()
-        # 表示する実行jobを格納
-        next_run_jobs = []
-
-        for job in all_jobs:
-            # vc_join_or_leaveは登録を無視する
-            if job.job_func.__name__ == 'vc_join_or_leave':
-                continue
-
-            # 時刻指定されたjobで次回実行が予定されている場合はdailyであると仮定(良い実装ではない)
-            if job.at_time and job.next_run:
-                # 念のため日本時刻に変更
-                next_run = JST.localize(job.next_run)
-                # 実行の曜日を取得
-                weekday = next_run.weekday()
-
-                adjust_run = next_run
-                # 土曜と日曜であれば無理矢理月曜日まで日付を足して調整(良い実装ではない)
-                if weekday == 5:
-                    adjust_run += timedelta(days=2)
-                elif weekday == 6:
-                    adjust_run += timedelta(days=1)
-
-                next_run_jobs.append((adjust_run, job.job_func.__name__))
-
-        # 実行時刻でソート
-        next_run_jobs.sort(key=lambda x: x[0])
-
-        # 直近5件を表示
-        for next_run_time, job_name in next_run_jobs[:5]:
-            logger.debug(f"次の実行時間: {next_run_time.strftime('%Y-%m-%d %H:%M:%S %Z%z')} 実行関数: {job_name}")
-
-        # スケジューラ内容の実行 *ループ時間未満のタスクは実行出来ないので注意
-        schedule.run_pending()
+    # ===== schedule =====
+    # TODO 直近スケジュールの表示
+    # tasks_objectを基にして行われる事になると思われる
 
     # ===== add execution =====
 
@@ -206,7 +180,7 @@ if __name__ == "__main__":
             logger.error("異常終了")
             sys.exit(1)
     except discord.errors.LoginFailure:
-        logger.critical("ログインに失敗しました。`.env`の`DISCORD_TOKEN`の値を確認してください。")
+        logger.critical("ログインに失敗しました。`DISCORD_TOKEN`の値を確認してください。")
         logger.info("vw-botを終了します。")
         sys.exit(1)
     except Exception:

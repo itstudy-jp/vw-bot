@@ -2,6 +2,7 @@
 """
 botのDiscordに対しての動作を規定
 """
+import asyncio
 import logging
 import os
 
@@ -46,10 +47,22 @@ class Bot:
             logger.info(f"{self.voice_channel.name}から退出しました。")
 
     async def play_audio(self, f_name):
+        """
+        botが音声ファイルを再生する
+
+        Note: VoiceClientのplayメソッドは再生を別のスレッドに引き渡す
+        afterでコールバックを受け取れるのでコールバック内にさらにevent loopを入れて
+        コールバックが返ってくるまで待機出来るようにしている
+        """
+
+        # 再生終了を待つ空のループ
+        audio_finished_event = asyncio.Event()
         def after_playing(error):
             if error:
                 logger.error(f"音声再生中にエラーが発生しました: {error}")
-            logger.debug(f"音声ファイル: {audio_path} の再生が完了しました。 ")
+            # 再生終了を伝える
+            # 別のスレッドから実行される可能性を考慮しメインイベントループに対して行う
+            self.client.loop.call_soon_threadsafe(audio_finished_event.set)
 
         logger.debug("音声ファイルの再生を試みます。")
         # 音声ファイルのパスを構築
@@ -71,6 +84,8 @@ class Bot:
         # 音声ファイルを再生
         logger.debug("音声ファイルを再生します。")
         self.voice_client.play(discord.FFmpegPCMAudio(audio_path),after=after_playing)
+        # 再生が終了されるのを待つ
+        await audio_finished_event.wait()
         logger.info(f"音声ファイルの再生が完了しました。")
 
     async def send_message(self, msg):

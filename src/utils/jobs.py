@@ -2,7 +2,6 @@
 """
 スケジュールによるbot動作を規定
 """
-import asyncio
 from datetime import datetime
 import logging
 
@@ -16,8 +15,9 @@ logger.addHandler(logging.NullHandler())
 # ===== locale =====
 # TODO 要検証
 # 異なるタイムゾーンで動作しているOSでも日本時間で動作
-JST = timezone('Asia/Tokyo')
+JST = timezone("Asia/Tokyo")
 logger.info("TimeZoneをJSTに設定しました。")
+
 
 # TODO jobのExceptionをキャッチ
 # https://schedule.readthedocs.io/en/stable/exception-handling.html
@@ -30,7 +30,7 @@ def get_now_time():
 
 def get_weekdays():
     """
-   月曜日から金曜日であればTrueを返す
+    月曜日から金曜日であればTrueを返す
     """
     dt = get_now_time()
     # 月-金は0-4
@@ -39,7 +39,24 @@ def get_weekdays():
     else:
         return False
 
-def vc_join_or_leave(bot, j_time, e_time):
+
+async def simple_operation(bot):
+    """
+    簡易テスト用
+    vcへ接続してメッセージの投稿と音声ファイルの再生を行う
+    音声ファイルが最後まで再生されたらvcから切断する
+    """
+
+    await bot.join_vc()
+    param = MESSAGES["clock_in"]
+    msg = param["msg"]
+    file_name = param["file_name"]
+    await bot.send_message(msg)
+    await bot.play_audio(file_name)
+    await bot.leave_vc()
+
+
+async def vc_join_or_leave(bot, j_time, e_time):
     """
     規定時刻内であればVCに参加し、規定時刻外であればVCから切断をループ
     """
@@ -51,16 +68,16 @@ def vc_join_or_leave(bot, j_time, e_time):
         now_time = dt.time()
         # 規定時刻内であればVCに参加する
         if j_time <= now_time < e_time:
-            asyncio.run_coroutine_threadsafe(bot.join_vc(), bot.client.loop)
+            await bot.join_vc()
         else:
             # 規定時刻外であれば切断する
-            asyncio.run_coroutine_threadsafe(bot.leave_vc(), bot.client.loop)
+            await bot.leave_vc()
     else:
         # 平日でなければ念のため切断をループさせておく
-        asyncio.run_coroutine_threadsafe(bot.leave_vc(), bot.client.loop)
+        await bot.leave_vc()
 
 
-def notify_clock_in(bot):
+async def notify_clock_in(bot):
     """
     始業
     """
@@ -68,10 +85,11 @@ def notify_clock_in(bot):
         param = MESSAGES["clock_in"]
         msg = param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
+        await bot.send_message(msg)
+        await bot.play_audio(file_name)
 
-def notify_work_start(bot, t):
+
+async def notify_work_start(bot, t):
     """
     作業開始
     """
@@ -79,10 +97,11 @@ def notify_work_start(bot, t):
         param = MESSAGES["work_start"]
         msg = str(t.hour) + param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
+        await bot.send_message(msg)
+        await bot.play_audio(file_name)
 
-def notify_break_start(bot, t):
+
+async def notify_break_start(bot, t):
     """
     休憩開始
     """
@@ -95,10 +114,11 @@ def notify_break_start(bot, t):
             param = MESSAGES["break_start"]["other"]
             msg = f'{t.hour}時{t.minute}分{param["msg"]}'
             file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
+        await bot.send_message(msg)
+        await bot.play_audio(file_name)
 
-def notify_five_minutes_left(bot):
+
+async def notify_five_minutes_left(bot):
     """
     作業時間終了まで残り5分
     """
@@ -106,10 +126,11 @@ def notify_five_minutes_left(bot):
         param = MESSAGES["five_minutes_left"]
         msg = param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
+        await bot.send_message(msg)
+        await bot.play_audio(file_name)
 
-def notify_hourly_task(bot):
+
+async def notify_hourly_task(bot):
     """
     1時間作業
     """
@@ -117,10 +138,11 @@ def notify_hourly_task(bot):
         param = MESSAGES["hourly_task"]
         msg = param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
-        asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
+        await bot.send_message(msg)
+        await bot.play_audio(file_name)
 
-def notify_clock_out(bot):
+
+async def notify_clock_out(bot):
     """
     終業
     """
@@ -128,7 +150,6 @@ def notify_clock_out(bot):
         param = MESSAGES["clock_out"]
         msg = param["msg"]
         file_name = param["file_name"]
-        asyncio.run_coroutine_threadsafe(bot.send_message(msg), bot.client.loop)
-        fut = asyncio.run_coroutine_threadsafe(bot.play_audio(file_name), bot.client.loop)
-        result = fut.result()
-        asyncio.run_coroutine_threadsafe(bot.leave_vc(), bot.client.loop)
+        await bot.send_message(msg)
+        await bot.play_audio(file_name)
+        await bot.leave_vc()
