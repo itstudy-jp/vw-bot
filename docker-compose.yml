@@ -1,10 +1,29 @@
 services:
   vw-bot:
-    environment:
-      TZ: Asia/Tokyo
-      ENV_FILE: ${ENV_FILE:-.env.dev}
+    # buildはDockerfileへのPATHを明示する方が安全です
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+
+    # environment:
+      # UTCで動作を行い、アプリケーション側でJSTを規定するのでTZの指定は通常不要です
+      # TZ: Asia/Tokyo
+      # env_fileの設定により自動的に環境変数はロードされるのでENV_FILEとしての設定は不要です
+      # ENV_FILE: ${ENV_FILE:-.env.dev}
+
     env_file:
       - ${ENV_FILE:-.env.dev}
-    build: .
     container_name: vw-bot
+
+    # unless-stoppedの場合、ホストやDocker再起動時に再開されません
+    # 再起動ポリシーをunless-stoppedで行うべきか確認をお願いします
+    # https://docs.docker.jp/config/containers/start-containers-automatically.html
     restart: unless-stopped
+
+    # アプリケーション側でlogを作成する場合は、ディレクトリのバインドを検討すべきです
+    # volumes:
+
+    # TODO healthcheckの導入
+    # コンテナの健常性をポーリングテストできます
+    # https://docs.docker.jp/compose/compose-file/compose-file-v3.html#healthcheck
+    # healthcheck:
