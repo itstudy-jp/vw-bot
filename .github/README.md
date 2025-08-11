@@ -37,7 +37,7 @@ VC_CHANNEL_ID=通知用VCのチャンネルID
 #### 実行方法
 - `./src/main.py`を実行するだけです
 
-## セットアップ手順 Docker（Makefile + Docker / Podman）
+## セットアップ手順 コンテナ（Makefile + Docker / Podman）
 
 ### 1. 環境準備
 
@@ -77,12 +77,16 @@ VC_CHANNEL_ID=通知用VCのチャンネルID
 ### 3. Bot イメージのビルドと実行
 
 ```bash
-make run-dev    # イメージをdevでビルドしてコンテナ起動
-make run-prod   # イメージをprodでビルドしてコンテナ起動
-make down       # BOTを停止してコンテナ・イメージ削除
-make stop       # BOTコンテナを停止
-make start      # BOTコンテナを開始
+make build      # イメージをビルド
+make run-dev    # 開発版環境変数ファイル(.env.dev)でコンテナ起動
+make run-prod   # 本番版環境変数ファイル(.env.prod)でコンテナ起動
+make down       # コンテナを停止してコンテナを削除
+make delete     # コンテナを停止してコンテナ・イメージを削除
+make stop       # コンテナを停止
+make start      # コンテナを開始
 ```
+
+* 通常の使い方であれば、イメージをビルドしてからコンテナを起動します。
 
 ### 4. ログの確認
 
@@ -94,9 +98,9 @@ docker logs -f vc-bot
 
 ## 注意事項
 
-* 音声通知には `ffmpeg` と `pynacl` ライブラリが必要です（Dockerfile 内で対応済み）
-* Discord Bot には VC参加・発言・メッセージ投稿のパーミッションが必要です
-* 時刻判定はシステムクロックに依存するため、タイムゾーンを確認してください（例：JST）
+* 音声通知には `ffmpeg` と `pynacl` ライブラリが必要です（コンテナの場合はDockerfile内で対応済み）
+* Discord Bot には VC参加・発言・メッセージ投稿のパーミッションが必要です。
+* 本番運用する際、docker-compose.ymlのrestartの値をalwaysにすることを推奨します。
 
 ## 今後の展望
 
