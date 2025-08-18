@@ -3,8 +3,9 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-
+    environment:
+      TZ: Asia/Tokyo
     env_file:
       - ${ENV_FILE:-.env.dev}
     container_name: vw-bot
-    restart: unless-stopped
+    restart: always

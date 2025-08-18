@@ -34,40 +34,30 @@ logger = logging.getLogger(__name__)
 # TODO async_scheduleを完全にNTPによって動作させられるまで暫定で残す
 # ===== time adjustment =====
 ntp_retrieve = NTPRetrieve()
-ntp_time = ntp_retrieve.get_locale_time()
-local_time = datetime.now(ntp_retrieve.time_zone)
-logger.info(f"NTP: {ntp_time} LOCAL: {local_time}")
-time_diff = abs(ntp_time - local_time)
-if time_diff >= timedelta(minutes=1):
-    logger.warning(f"警告: {ntp_retrieve.ntp_host}で取得された時刻とローカル時刻の差が1分以上あります！差分: {time_diff}")
-    # ユーザーに続行を促す
-    while True:
-        user_input = input("このまま続行しますか？ (y/n): ").lower().strip()
-        if user_input == "y":
-            logger.info("vw-botの起動処理を続行します。")
-            break
-        elif user_input == "n":
-            logger.info("vw-botを終了します。")
-            sys.exit(0)
-        else:
-            logger.info("無効な入力です。「y」または「n」を入力してください。")
+try:
+    ntp_time = ntp_retrieve.get_locale_time()
+    local_time = datetime.now(ntp_retrieve.time_zone)
+    logger.info(f"NTP: {ntp_time} LOCAL: {local_time}")
+    time_diff = abs(ntp_time - local_time)
+    if time_diff >= timedelta(minutes=1):
+        logger.warning(f"警告: {ntp_retrieve.ntp_host}で取得された時刻とローカル時刻の差が1分以上あります！差分: {time_diff}")
+        # ユーザーに続行を促す
+        while True:
+            user_input = input("このまま続行しますか？ (y/n): ").lower().strip()
+            if user_input == "y":
+                logger.info("vw-botの起動処理を続行します。")
+                break
+            elif user_input == "n":
+                logger.info("vw-botを終了します。")
+                sys.exit(0)
+            else:
+                logger.info("無効な入力です。「y」または「n」を入力してください。")
+except Exception:
+    logger.exception("NTPサーバーからの時刻取得に失敗しました。")
 
 # ===== environment =====
 # .envの記述を環境変数へ登録
 load_dotenv()
-
-# containerで設定した環境変数は自動的に読み込まれるのでloadは不要です
-# 意図が不明だったのでコードはコメントアウトで残しておきます
-# 特別な理由により必要とされている場合は単体実行との共通化をどうするか考えるべきです
-# env_file = os.getenv("ENV_FILE", ".env.dev")
-# logger.info(f"loading env from: {env_file}")
-# load_dotenv(dotenv_path=env_file)
-# if "prod" in env_file:
-#     ENV = "prod"
-# else:
-#     ENV = "dev"
-#
-# logger.debug(f"環境変数ファイル:{env_file} 環境:{ENV}")
 
 DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN")
 GUILD_ID: int = int(os.getenv("GUILD_ID"))

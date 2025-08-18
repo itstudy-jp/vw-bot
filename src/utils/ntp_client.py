@@ -28,7 +28,8 @@ class NTPRetrieve:
             return selected_time_zone
         except Exception:
             logger.exception("NTPサーバーからの時刻取得に失敗しました。")
-            sys.exit(1)
+            #sys.exit(1)
+            raise
 
 def main():
     client = NTPRetrieve()
